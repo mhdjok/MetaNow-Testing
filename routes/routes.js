@@ -1,27 +1,21 @@
-// Import express
 import express from "express";
-// Import Product Controller
 import {
-    getProducts,
-    getProductById,
-    createProduct,
-    updateProduct,
-    deleteProduct
-} from "../controllers/Product.js";
+    register,
+    login, refreshToken
+} from "../controllers/Users.js";
 
-// Init express router
+import bodyParser from "body-parser";
+import req from "express/lib/request.js";
+import res from "express/lib/response.js";
+
+
+
+
 const router = express.Router();
+router.use(express.json());
 
-// Route get all products
-router.get('/products', getProducts);
-// Route get product by id
-router.get('/products/:id', getProductById);
-// Route create a new product
-router.post('/products', createProduct);
-// Route update product by id
-router.put('/products/:id', updateProduct);
-// Route delete product by id
-router.delete('/products/:id', deleteProduct);
+router.post('/register',register)
+router.post('/login',login)
+router.post('/refreshToken',refreshToken)
 
-// export router
 export default router;

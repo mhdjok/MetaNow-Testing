@@ -4,17 +4,17 @@
     <meta charset="utf-8">
     <title>MetaGols</title>
     <!-- CSS only -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <link href="https://getbootstrap.com/examples/jumbotron-narrow/jumbotron-narrow.css" rel="stylesheet">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
     <link href="https://www.jqueryscript.net/css/jquerysctipttop.css" rel="stylesheet" type="text/css">
     <link rel="stylesheet" href="assets/css/manage-audio.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="assets/images/metagolslogo.svg">
 </head>
 <style>
-
-    .chatStyle
-    {
-        padding-top: 64px !important;
-    }
     body{
         background-color: #1c0a35;
         background-image: url('assets/images/download.png');
@@ -23,322 +23,19 @@
         /*background-attachment: fixed;*/
         background-position: center;
     }
-    .card {
-        background: #fff;
-        transition: .5s;
-        border: 0;
-        /*margin-bottom: 30px;*/
-        border-radius: .55rem;
-        position: relative;
-        width: 100%;
-        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 10%);
+
+    .seenTick1 {
+        background-image : url('assets/images/double-check.png');
+        width : 20px;
+        height : 20px;
+        background-size: contain;
     }
 
-
-    .chat-app .chat {
-        overflow-y: scroll;
-        max-height:756px;
-        background: darkslateblue;
-    }
-
-
-    .chat .chat-header {
-        padding: 9px 20px;
-        border-bottom: 2px solid #f4f7f6;
-        position: absolute;
-        width: 100%;
-        background: white;
-        z-index: 9999;
-        box-shadow: 0px 2px 14px 0px #0000005c;
-    }
-
-    .chat .chat-header img {
-        float: left;
-        border-radius: 40px;
-        width: 40px
-    }
-
-    .chat .chat-header .chat-about {
-        float: left;
-        padding-left: 10px
-    }
-
-    .chat .chat-history {
-        padding-top: 22px;
-        padding-left: 10px;
-        background: darkslateblue;
-    }
-
-    .chat .chat-history ul {
-        padding: 0
-    }
-
-    .chat .chat-history ul li {
-        list-style: none;
-        margin-bottom: 30px
-    }
-
-    .chat .chat-history ul li:last-child {
-        margin-bottom: 30px
-    }
-
-    .chat .chat-history .message-data {
-        margin-bottom: 15px
-    }
-
-    .chat .chat-history .message-data img {
-        border-radius: 40px;
-        width: 40px
-    }
-
-    .chat .chat-history .message-data-time {
-        color: #434651;
-        padding-left: 6px
-    }
-
-    .chat .chat-history .message {
-        color: #444;
-        padding: 6px 19px;
-        line-height: 26px;
-        font-size: 16px;
-        border-radius: 7px;
-        display: inline-block;
-        margin-top: -12px;
-        max-width: 70%;
-        /*position: relative*/
-    }
-
-    .online,
-    .offline,
-    .me {
-        margin-right: 2px;
-        font-size: 8px;
-        vertical-align: middle
-    }
-
-    .online {
-        color: #86c541
-    }
-
-    .offline {
-        color: grey
-    }
-
-    .chat .chat-history .message:after {
-        bottom: 100%;
-        left: 7%;
-        border: solid transparent;
-        content: " ";
-        height: 0;
-        width: 0;
-        position: absolute;
-        pointer-events: none;
-        border-bottom-color: #fff;
-        border-width: 10px;
-        margin-left: -10px
-    }
-
-    .chat .chat-history .my-message {
-        background: #efefef;
-        min-width: 263px;
-    }
-
-    .people-list {
-        max-height: 750px;
-        overflow-y: scroll;
-        overflow-x: hidden;
-        -moz-transition: .5s;
-        -o-transition: .5s;
-        -webkit-transition: .5s;
-        transition: .5s
-    }
-
-    .people-list .chat-list li {
-        padding: 10px 15px;
-        list-style: none;
-        border-radius: 3px
-    }
-
-    .people-list .chat-list li:hover {
-        background: #efefef;
-        cursor: pointer
-    }
-
-    .people-list .chat-list li.active {
-        background: #efefef
-    }
-
-    .people-list .chat-list li .name {
-        font-size: 15px
-    }
-
-    .people-list .chat-list img {
-        width: 45px;
-        border-radius: 50%
-    }
-
-    .people-list img {
-        float: left;
-        border-radius: 50%
-    }
-
-    .people-list .about {
-        float: left;
-        padding-left: 8px
-    }
-
-    .people-list .status {
-        color: #999;
-        font-size: 13px
-    }
-
-    .chat-header clearfix {
-        overflow-y: scroll;
-
-    }
-
-    .chat .chat-history .my-message:after {
-        bottom: 100%;
-        left: 30px;
-        border: solid transparent;
-        content: " ";
-        height: 0;
-        width: 0;
-        position: absolute;
-        pointer-events: none;
-        border-bottom-color: #efefef;
-        border-width: 10px;
-        margin-left: -10px
-    }
-
-    .chat .chat-history .other-message {
-        background: #e8f1f3;
-        max-width: 70%;
-        margin-right: 10px;
-        padding: 6px 19px;
-        line-height: 26px;
-        display: inline-block;
-        min-width: 263px;
-    }
-
-    .chat .chat-history .other-message:after {
-        border-bottom-color: #e8f1f3;
-        left: 93%
-    }
-
-    .chat .chat-message {
-        padding: 20px;
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        background: white;
-    }
-
-
-    .float-right {
-        float: right
-    }
-
-    .clearfix:after {
-        visibility: hidden;
-        display: block;
-        font-size: 0;
-        content: " ";
-        clear: both;
-        height: 0
-    }
-
-
-    .msgTime {
-        font-size: 12px;
-        position: sticky;
-        left: 100%;
-    }
-    @media only screen and (max-width: 767px) {
-        .chat-app .people-list {
-            height: 465px;
-            width: 100%;
-            overflow-x: auto;
-            background: #fff;
-            left: -400px;
-            display: none;
-
-        }
-        .chat-app .people-list.open {
-            left: 0
-        }
-        .chat-app .chat {
-            margin: 0;
-        }
-        .chat-app .chat .chat-header {
-            border-radius: 0.55rem 0.55rem 0 0
-        }
-        .chat-app .chat-history {
-            height: 300px;
-            overflow-x: auto
-        }
-    }
-
-    @media only screen and (min-width: 768px) and (max-width: 992px) {
-        .chat-app .chat-list {
-            height: 650px;
-            overflow-x: auto
-        }
-        .chat-app .chat-history {
-            height: 600px;
-            overflow-x: auto
-        }
-    }
-
-    @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) and (orientation: landscape) and (-webkit-min-device-pixel-ratio: 1) {
-        .chat-app .chat-list {
-            height: 480px;
-            overflow-x: auto
-        }
-        .chat-app .chat-history {
-            height: calc(100vh - 350px);
-            overflow-x: auto
-        }
-    }
-
-    .form-control:focus {
-        border-color: #ced4db;
-        box-shadow: none;
-    }
-    .input-group-prepend{
-        justify-content: space-between;
-        display: flex;
-        @apply col-sm-2
-    }
-
-    #users{
-        border-radius: 0;
-    }
-
-
-    .msgs {
-        right: 0;
-        margin-top: -32px;
-        position: sticky;
-        background-color: grey;
-        padding: 5px;
-        border-radius: 3px;
-        color: white;
-        margin-left: 182px;
-        font-size: 10px;
-    }
-
-    .tabcontent {
-        display: none;
-    }
-
-    .form-control {
-        display: inline-block;
-    }
-
-    .chatImage{
-        width: 230px;
-        padding: 20px;
+    .seenTick0 {
+        background-image : url('assets/images/check.png');
+        width : 20px;
+        height : 20px;
+        background-size: contain;
     }
 </style>
 <body>
@@ -347,21 +44,17 @@
     <br>
     <h1 style="color: white">MetaGols</h1>
     <p style="color: white"> Status : <span id="status"> Disconnected </span></p>
-    <h1 style="color: red"> IMPORTANT!</h1>
-    <p style="color:white;">To Enable Mic, Copy this link and paste it in a new tab, "chrome://flags/#unsafely-treat-insecure-origin-as-secure" , and then paste this url in the textbox, "http://192.168.10.121/nodejs-websocket-serve/" and enable it from the right button, and Relunch Chrome</p>
     <div id="soundOption">
     </div>
-    <div style="margin-top: 20px" class="col-lg-3">
-        <div class="input-group mb-0 enterName">
-            <form method="post" id="enterForm">
-            <input style="margin-top: 0px" type="email" id="email" class="form-control" placeholder="Enter Email" required>
-
-            <input style="margin-top: 20px" type="text" id="fullname" class="form-control" placeholder="Enter Fullname" required>
-
-            <button style="margin-top: 20px" type="submit" class="btn btn-success">Enter</button>
-            </form>
+    <br>
+    <div class = "row" >
+        <div style="display: flex" class="col-lg-6">
+            <img style="cursor:pointer;border-radius: 50%" id="signedPicture" src = "assets/images/metagolslogo.svg" alt = "profilePicture" width="50px"/>
+            <div style="color: white;padding-top: 13px;padding-left: 10px" class="chat-about signedName" ><br></div>
         </div>
     </div>
+    <button id="logout" class="btn btn-primary" style="font-size: 12px;margin-top:22px;">Logout</button>
+    <br>
     <br>
 
 
@@ -371,9 +64,10 @@
                 <div id="plist" class="people-list">
                     <div class="chat-header clearfix">
                         <div class="row">
-                            <div class="col-lg-6">
-                                <div class="chat-about">
-                                    <h6 style="padding: 20px" class="m-b-0">Online</h6>
+                            <div class="col-lg-12">
+                                <div style="display: flex;align-items: baseline;justify-content: space-between;padding-right: 20px;" class="chat-about">
+                                    <h6 style="padding: 20px" class="m-b-0">Chats</h6>
+                                    <i data-toggle="modal" data-target="#exampleModal" style="cursor: pointer"  class="far fa-edit createMsg"></i>
                                 </div>
                             </div>
                         </div>
@@ -386,7 +80,34 @@
         <div class="col-lg-6">
 
             <div class="tabs">
-
+                 <div class="card chat-app">
+                     <div class="chat">
+                         <div class = "testingDiv">
+                             <div class="chat-header clearfix">
+                                 <div class = "row" >
+                                     <div class = "col-lg-6" >
+                                         <a href = "javascript:void(0);" data-toggle = "modal" data-target = "#view_info" >
+                                             <img id="userProfileImage" src = "assets/images/metagolslogo.svg" alt = "profilePicture"/>
+                                         </a>
+                                         <div class="chat-about userData" >
+                                             MetaGols Group<br>
+                                             <div style='margin-top: -5px;'>
+                                                 <span id='groupStatus' style="font-weight:400;font-size: 12px;margin-top: -5px"> Active </span>
+                                                 <span id="typingGroup" style="font-weight:400;font-size: 12px;display: none"> Typing... </span>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     <div class="col-lg-6 justify-content-end d-flex align-items-center" id="deleteBtn">
+                                         <i id="deleteChat" style="color: rgba(204,19,4,0.98);cursor: pointer" class="fas fa-trash"></i>
+                                 </div>
+                                 </div>
+                             </div>
+                             <div class="chat-history">
+                                 <ul class="m-b-0 chatStyle" id="hisTgroup"></ul>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
             </div>
 
             <div style="margin-top: -20px;display: none" class="row sendForm">
@@ -415,6 +136,7 @@
                 <div class="col-md-10">
                     <input class="file" id="image" type="file" style="display: none" accept="image/*"/>
                     <input class="file" id="fileAttach" type="file" style="display: none"/>
+                    <input class="file" id="changeProfile" type="file" style="display: none" accept="image/*"/>
                     <input id="messageBox" data-meteor-emoji="true" style="border-radius: 0px 0px 5px 0px;height: 44.3px;margin-left: 69px;" type="text" class="form-control message" placeholder="Enter text here..." autoComplete="off" autofocus required>
                 </div>
               </div>
@@ -425,7 +147,38 @@
 
     </div>
 </div>
+
+
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">New Message</h5>
+            </div>
+            <div class="modal-body">
+                <center>
+                <div style="width: 65%;" class="input-group">
+                    <input style="border-radius: 6px !important;" name="search_value" type="search" class="form-control rounded search_value" placeholder="Search By Name" aria-label="Search" aria-describedby="search-addon" />
+                </div>
+                    <br>
+                    <div style="text-align: left" class="container bootstrap snippets bootdey">
+                        <div class="jumbotron">
+                            <ul class="list-group searchResults">
+                            </ul>
+                        </div>
+                    </div>
+                </center>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="modalClose" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <br><br><br>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
     <script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
     <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
@@ -437,3 +190,6 @@
 
 </body>
 </html>
+
+
+

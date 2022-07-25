@@ -3,7 +3,7 @@
 
 /* used to set default load to show Option A until toggled */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .inactive {

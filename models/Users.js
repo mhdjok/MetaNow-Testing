@@ -24,6 +24,10 @@ const Users = db.define('users', {
     profile_image: {
         type: DataTypes.STRING
     },
+    password: {
+        type: DataTypes.STRING
+    },
+
 },{
     // Freeze Table Name
     underscored: true,

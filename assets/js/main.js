@@ -5,15 +5,20 @@
 
 var fullname;
 var email;
+var token;
 var MySocketId;
 var toUserSocketId;
 var myUserId;
-var toUserId;
+var toUserId = null;
 var date;
-var isGroup = false;
+var isGroup = true;
 var users = [];
 var notifiSound = true;
 var toUserName;
+let typingTimer;
+let doneTypingInterval = 1000;
+var url = "http://192.168.10.121:3000";
+
 if(notifiSound){
     $('#soundOption').html('<button id="soundOff" class="btn btn-danger" style="font-size: 12px">Turn Off Notification</button>');
 }
@@ -33,46 +38,64 @@ $(document).on('click','#soundOn',function() {
 });
 
 
-$("#enterForm").submit(function (){
-    var fullname = $('#fullname').val();
-    var email = $('#email').val();
-    if(fullname != null && email != null) {
-        document.cookie = "fullname=" + fullname;
-        document.cookie = "email=" + email;
-        auth();
-    }
-});
-
 $(document).ready(function() {
     auth();
 });
 
 function auth() {
-    fullname = document.cookie
+    token = document.cookie
         .split('; ')
-        .find(row => row.startsWith('fullname='))
+        .find(row => row.startsWith('token='))
         ?.split('=')[1];
 
-    email = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('email='))
-        ?.split('=')[1];
 
-    if (fullname == null || email == null) {
-        $('.conv').hide();
-        $('.enterName').show();
+    $('#deleteBtn').addClass('hidden');
+
+
+    if (token == null) {
+        window.location.href = 'login.html';
     }
     else{
-        $('.conv').show();
-        $('.enterName').hide();
+        $.ajax({
+            type: "POST",
+            url: url + "/refreshToken",
+            data: JSON.stringify({
+                token: token,
+            }),
+            dataType: 'json',
+            processData: false,
+            contentType: 'application/json',
+            success: function (data, status, msg) {
+                fullname = data.full_name;
+                email = data.email;
+                myUserId = data.user_id;
+                $('.signedName').html(fullname);
+                $('.conv').show();
+            },
+            error: function (data, jqXhr, textStatus, errorThrown) {
+                window.location.href = 'login.html';
+            }
+        });
+
 
 
         const socket = io("ws://192.168.10.121:3000");
-
         socket.on("connect", () => {
+            socket.emit("user", {id : socket.id, fullname : fullname, email : email, token : token});
             MySocketId = socket.id;
-            socket.emit("user", {id : MySocketId, fullname : fullname, email : email});
             $("#status").text('Connected');
+            socket.on('checkToken', function (data){
+                if(!data)
+                    window.location.href = 'login.html';
+
+            })
+                socket.emit("getGroupChat", {
+                    userId : myUserId,
+                    toUserId : 0,
+
+            });
+            $('.sendForm').show();
+
         });
 
         function testConnection(){
@@ -81,98 +104,280 @@ function auth() {
             }
             setTimeout(testConnection, 5000);
         }
-
         testConnection();
 
+        //Get Users
         socket.on("dBusers", function (data) {
-            console.log(data);
             users = data;
+            socket.emit('friends',myUserId)
+            users.map(el => {
+                if (el.socket_id == MySocketId) {
+                    $('#signedPicture').attr('src', el.profile_image);
+                }
+            });
+        });
+        //Users i have chat with
+        socket.on('friends', function (data) {
             $('#users').html('')
             $('#users').append("" + "<li id='groupList' userId='0' city='metaGroup' userName='metaGroup' class='clearfix tablinks' ><img src='assets/images/metagolslogo.svg' alt='avatar'><div class='about'><div class='name'>MetaGols Group</div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div id='numGroup' style='display: none' class='msgs'></div></div></li>");
             $('.tabs').append("" + '<div id="metaGroup" class = "tabcontent" > <div class = "card chat-app" >  <div class = "chat" > <div class = "testingDiv" > <div class = "chat-header clearfix" > <div class = "row" > <div class = "col-lg-6" > <a href = "javascript:void(0);" data-toggle = "modal" data-target = "#view_info" > <img src = "assets/images/metagolslogo.svg" alt = "avatar"/> </a><div class="chat-about"><h6 style="margin-top: 3px" class="m-b-0">MetaGols Group <br><span id="groupStatus" style="font-weight:400;font-size: 12px;"> Online </span> <span id="typingGroup" style="font-weight:400;font-size: 12px;display: none"></span></h6></div></div></div></div><div class="chat-history"><ul class="m-b-0 chatStyle" id="hisTgroup"></ul></div></div></div></div></div>');
 
-
-            users.map(el => {
-                if (el.socket_id != MySocketId) {
-                    if (el.last_seen == 'Online') {
-                        $('#users').append("" + "<li id='usersList' city='" + el.socket_id + "' userName='" + el.fullname + "' socketId='" + el.socket_id + "' userId='" + el.id + "' class='clearfix tablinks' ><img src='"+el.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.fullname + " </div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div style='display: none' id='num" + el.socket_id + "' class='msgs'></div></div></li>")
+            data.map(el => {
+                if (el.firstUser.id == myUserId) {
+                    if (el.secondUser.last_seen == 'Online') {
+                        $('#users').append("" + "<li id='usersList' userName='" + el.secondUser.fullname + "' socketId='" + el.secondUser.socket_id + "' userId='" + el.secondUser.id + "' class='clearfix tablinks' ><img src='"+el.secondUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.secondUser.fullname + " </div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div style='display: none' id='num" + el.secondUser.id + "' class='msgs'></div></div></li>")
                     } else {
-                        $('#users').append("" + "<li id='usersList' city='" + el.socket_id + "' userName='" + el.fullname + "' socketId='" + el.socket_id + "' userId='" + el.id + "' class='clearfix tablinks' ><img src='"+el.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last <seen></seen> "+ moment(el.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.socket_id + "' class='msgs'></div></div></li>")
+                        $('#users').append("" + "<li id='usersList' city='" + el.secondUser.socket_id + "' userName='" + el.secondUser.fullname + "' socketId='" + el.secondUser.socket_id + "' userId='" + el.secondUser.id + "' class='clearfix tablinks' ><img src='"+el.secondUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.secondUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last Seen "+ moment(el.secondUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.secondUser.id + "' class='msgs'></div></div></li>")
                     }
                 }
-            });
+                else {
+                    if (el.firstUser.last_seen == 'Online') {
+                        $('#users').append("" + "<li id='usersList' userName='" + el.firstUser.fullname + "' socketId='" + el.firstUser.socket_id + "' userId='" + el.firstUser.id + "' class='clearfix tablinks' ><img src='"+el.firstUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.firstUser.fullname + " </div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div style='display: none' id='num" + el.firstUser.id + "' class='msgs'></div></div></li>")
+                    } else {
+                        $('#users').append("" + "<li id='usersList' city='" + el.firstUser.socket_id + "' userName='" + el.firstUser.fullname + "' socketId='" + el.firstUser.socket_id + "' userId='" + el.firstUser.id + "' class='clearfix tablinks' ><img src='"+el.firstUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.firstUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last Seen "+ moment(el.firstUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.firstUser.id + "' class='msgs'></div></div></li>")
+                    }
+                }
 
-            users.map(el => {
-                if(el.socket_id != MySocketId) {
-                    if (el.last_seen == 'Online') {
-                        $('.tabs').append("" + '<div id = "' + el.socket_id + '" class = "tabcontent" > <div class = "card chat-app" >  <div class = "chat" > <div class = "testingDiv" > <div class = "chat-header clearfix" > <div class = "row" > <div class = "col-lg-6" > <a href = "javascript:void(0);" data-toggle = "modal" data-target = "#view_info" > <img src = "assets/images/metagolslogo.svg" alt = "avatar"/> </a><div class="chat-about"><h6 style="margin-top: 3px" class="m-b-0">' + el.fullname + ' <br> <span id="' + el.socket_id + 'Status" style="font-weight:400;font-size: 12px;"> Online </span><span id="typing' + el.socket_id + '" style="font-weight:400;font-size: 12px;display: none"> Typing... </span></h6></div></div></div></div><div class="chat-history"><ul class="m-b-0 chatStyle" id="hisT' + el.socket_id + '"></ul></div></div></div></div></div>')
+            });
+        })
+        //User Disconnected
+        socket.on("disconnect", function (){
+            socket.emit("disconnect", myUserId);
+        });
+        //Message Received
+        socket.on("message" , function(data) {
+            if(data.group == false) {
+                if (notifiSound) {
+                    var audio = new Audio('assets/sounds/notification_sound.mp3');
+                    audio.play();
+                }
+                if (data.SenderId  != null && data.SenderId  != toUserId) {
+                    document.getElementById('num' + data.SenderId).style.display = 'block';
+                    $('#num' + data.SenderId).html('NEW');
+                }else {
+                    socket.emit("seenMsgs", {
+                        userId : myUserId.toString(),
+                        toUserId : toUserId.toString(),
+                    });
+                }
+                if(data.type == 'TEXT') {
+                    $('#hisT' + data.SenderId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div> " + data.message + " </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                } else if(data.type == 'IMAGE'){
+                    $("#hisT" + data.SenderId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div> <img class='chatImage' src=" + data.file + " alt=" + data.message + " /> </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+
+                } else if(data.type == 'FILE'){
+                    $("#hisT" + data.SenderId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div>  <a  href='files/"+data.message+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+data.message.substring(0,15)+"... </span></a></div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                } else {
+                    $("#hisT" + data.SenderId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</><span class='msgTime'>" + moment(data.date._d).format('h:mm:ss') + "</span></div>  <audio class='voiceChat' src='./records/"+data.message+"' controls></audio> </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                }
+            }else {
+                if (isGroup != true) {
+                    document.getElementById('numGroup').style.display = 'block';
+                    $('#numGroup').html('NEW');
+                    if (notifiSound) {
+                        var audio = new Audio('assets/sounds/notification_sound.mp3');
+                        audio.play();
+                    }
+                }
+
+                if(data.type == 'TEXT') {
+                    $('#hisTgroup').append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div> " + data.message + " </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                } else if(data.type == 'IMAGE'){
+                    $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div> <img class='chatImage' src=" + data.file + " alt=" + data.message + " /> </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+
+                } else if(data.type == 'FILE'){
+                    $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span></div>  <a href='files/"+data.message+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+data.message.substring(0,15)+"... </span></a></div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                } else {
+                    $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date._d).format('h:mm:ss') + "</span></div><audio class='voiceChat' src='./records/"+data.message+"' controls></audio> </div></li>");
+                    $('.chat').animate({scrollTop: 20000000}, "fast");
+                }
+            }
+
+
+        });
+        //User Is Typing
+        socket.on("typing" , function (data){
+            if(data.group == true) {
+                $('#typingGroup').html(data.fullname+' is Typing...');
+                $('#typingGroup').show();
+                $('#groupStatus').hide();
+            }
+            else {
+                $('#typing'+data.SenderId).show();
+                $('#'+data.SenderId+'Status').hide();
+
+            }
+        });
+        //User Finished Typing
+        socket.on("finish-typing" , function (data){
+            if(data.group == true) {
+                $('#typingGroup').hide();
+                $('#groupStatus').show();
+            }
+            else {
+                $('#typing'+data.SenderId).hide();
+                $('#'+data.SenderId+'Status').show();
+
+            }
+        });
+        //Get Chat Between Users
+        socket.on("getChat", function (data) {
+
+            $("#hisT" + toUserId).html('');
+            data.map(el => {
+                if (el.from_user == myUserId) {
+                    if (el.type == 'TEXT') {
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'> " + el.msg +  "<span class='seenTick" + el.id + " seenTick" + el.seen + "'> </span> </div></div></li>"
+                        )
+                    } else if (el.type == 'IMAGE') {
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'> <img class='chatImage' src='images/" + el.msg + "' /> <span class='seenTick" + el.id + " seenTick" + el.seen + "'> </span> </div></div></li>"
+                        )
+                    } else if (el.type == 'FILE') {
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'> <a href='files/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a><span class='seenTick" + el.id + " seenTick" + el.seen + "'> </span></div></div></li>")
                     }
                     else {
-                        $('.tabs').append("" + '<div id = "' + el.socket_id + '" class = "tabcontent" > <div class = "card chat-app" >  <div class = "chat" > <div class = "testingDiv" > <div class = "chat-header clearfix" > <div class = "row" > <div class = "col-lg-6" > <a href = "javascript:void(0);" data-toggle = "modal" data-target = "#view_info" > <img src = "assets/images/metagolslogo.svg" alt = "avatar"/> </a><div class="chat-about"><h6 style="margin-top: 3px" class="m-b-0">' + el.fullname + ' <br> <span id="' + el.socket_id + 'Status" style="font-weight:400;font-size: 12px;"> Last seen at '+el.last_seen+' </span><span id="typing' + el.socket_id + '" style="font-weight:400;font-size: 12px;display: none"> Typing... </span></h6></div></div></div></div><div class="chat-history"><ul class="m-b-0 chatStyle" id="hisT' + el.socket_id + '"></ul></div></div></div></div></div>')
+                        $("#hisT"+toUserId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>"+moment(el.createdAt).format("h:mm:ss")+"</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'>  <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio><span class='seenTick" + el.id + " seenTick" + el.seen + "'> </span></div></div></li>");
+                    }
+                } else {
+                    if (el.type == 'TEXT') {
+                        $('#hisT' + toUserId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + toUserName + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> " + el.msg + " </div></li>")
+                    } else if (el.type == 'IMAGE') {
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + toUserName + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>");
+                    } else if (el.type == 'FILE') {
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + toUserName + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div><a href='files/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>");
+                    }
+                    else {
+                        $('#hisT' + toUserId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + toUserName + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>")
+                    }
+                }
+            })
+            $('.chat').animate({scrollTop: 20000000}, "fast");
+        })
+        //Get Group Chat
+        socket.on("getGroupChat", function (data) {
+            $("#hisTgroup").html('');
+            data.map(el => {
+                if (el.from_user == myUserId) {
+                    if (el.type == 'TEXT') {
+                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div> " + el.msg + " </div></li>"
+                        )
+                    } else if (el.type == 'IMAGE') {
+                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>"
+                        )
+                    } else if (el.type == 'FILE') {
+                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div> <a href='files/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>")
+                    }
+                    else{
+                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> </div> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>")
+
+                    }
+                } else {
+                    if (el.type == 'TEXT') {
+                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + el.fullname + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> " + el.msg + " </div></li>")
+                    } else if (el.type == 'IMAGE') {
+                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>");
+                    } else if (el.type == 'FILE') {
+                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div><a href='files/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>");
+                    }
+                    else {
+                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><div style='display: flex;justify-content: space-between;'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span></div> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>");
 
                     }
                 }
             })
+            $('.chat').animate({scrollTop: 20000000}, "fast");
 
+        })
 
-        });
-
-        socket.on("userId", function (data) {
-            myUserId = data;
-        });
-
+        socket.on("seenMsgs", function (data){
+            if(toUserId == data){
+                $('.seenTick'+ data).css("background-image", "url('assets/images/double-check.png')", "width", "20px", "height", "20px", "background-size","contain");
+                $('.seenTick'+ data).css("width", "20px");
+                $('.seenTick'+ data).css("height", "20px");
+                $('.seenTick'+ data).css("background-size","contain");
+                $('.seenTick'+ data).html('');
+            }
+        })
+        //On Send msg button press
         $("#sendMessage").submit(function (event) {
             var message1 = $("#messageBox").val();
             var lt = /</g, gt = />/g, ap = /'/g, ic = /"/g;
             var message = message1.toString().replace(lt, "&lt;").replace(gt, "&gt;").replace(ap, "&#39;").replace(ic, "&#34;");
-
-            date = new moment();
-            if(isGroup) {
-                if(message != '') {
-                    socket.emit("message", {
-                        message: message,
-                        fullname: fullname,
-                        date: date,
-                        ReceiverUserId: 0,
-                        ReceiverSocketId: toUserSocketId,
-                        SenderId: myUserId,
-                        SenderSocketId: MySocketId,
-                        group: true,
-                        type : 'TEXT'
-                    });
-                    $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + date.format("h:mm:ss") + "</span> <br> "+message+" </div></li>");
+            if(message1.trim() != '') {
+                date = new moment();
+                if (isGroup) {
+                    if (message != '') {
+                        socket.emit("message", {
+                            message: message,
+                            fullname: fullname,
+                            date: date,
+                            ReceiverUserId: 0,
+                            ReceiverSocketId: toUserSocketId,
+                            SenderId: myUserId,
+                            SenderSocketId: MySocketId,
+                            group: true,
+                            type: 'TEXT'
+                        });
+                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + date.format("h:mm:ss") + "</span> </div> " + message + " </div></li>");
+                    }
+                } else {
+                    if (message != '') {
+                        socket.emit("message", {
+                            message: message,
+                            fullname: fullname,
+                            date: date,
+                            ReceiverUserId: toUserId,
+                            ReceiverSocketId: toUserSocketId,
+                            SenderId: myUserId,
+                            SenderSocketId: MySocketId,
+                            group: false,
+                            type: 'TEXT'
+                        });
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>" + date.format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'> " + message + " <span class='seenTick0 seenTick" + toUserId + "'> </span> </div></div></li>");
+                    }
                 }
-            }
-            else {
-                if(message != '') {
-                    socket.emit("message", {
-                        message: message,
-                        fullname: fullname,
-                        date: date,
-                        ReceiverUserId: toUserId,
-                        ReceiverSocketId: toUserSocketId,
-                        SenderId: myUserId,
-                        SenderSocketId: MySocketId,
-                        group: false,
-                        type : 'TEXT'
-                    });
-                    $("#hisT"+toUserSocketId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+date.format("h:mm:ss")+"</span> <br> "+message+" </div></li>");
-                }
-            }
-            $('.chat').animate({ scrollTop: 20000000 },  "fast");
-            document.getElementById("messageBox").value = "";
-            event.preventDefault();
+                $('.chat').animate({scrollTop: 20000000}, "fast");
+                document.getElementById("messageBox").value = "";
+                event.preventDefault();
 
+            }else {
+                event.preventDefault();
 
+            }
 
         });
-
+        //On send Image button press
         $("#attachBtn").click(function (e) {
             $("#image").click();
         });
-
+        //On send File button press
         $("#attachFile").click(function (e) {
             $("#fileAttach").click();
+        });
+
+        $("#signedPicture").click(function (e){
+            $("#changeProfile").click();
+        });
+
+        $("#changeProfile").change(function (e) {
+            var data = e.originalEvent.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function (evt) {
+                socket.emit("changeProfile", {
+                    userId : myUserId,
+                    image : evt.target.result,
+                    imageName : data.name,
+                });
+            };
+            reader.readAsDataURL(data);
+            $("#changeProfile").val('');
         });
 
         $("#fileAttach").change(function (e) {
@@ -180,42 +385,45 @@ function auth() {
             var reader = new FileReader();
             let myFileName = data.name;
             myFileName = myFileName.split('.').join('-' + Date.now() + '-' + MySocketId + '.');
-            reader.onload = function (evt) {
-                var msg = {};
-                date = new moment();
-                if(isGroup == false) {
-                    msg.file = evt.target.result;
-                    msg.message = myFileName;
-                    msg.fullname = fullname;
-                    msg.SenderSocketId = MySocketId;
-                    msg.date = date;
-                    msg.ReceiverSocketId = toUserSocketId;
-                    msg.group = false;
-                    msg.SenderId = myUserId;
-                    msg.ReceiverUserId = toUserId;
-                    msg.type = 'FILE'
-                    socket.emit("message", msg);
-                    $("#hisT" + toUserSocketId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span style='padding-left: 65px;font-size: 12px'>" + date.format("h:mm:ss") + "</span> <br>  <a target='_blank' href='images/"+myFileName+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+myFileName.substring(0,15)+"... </span></a></div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-                }
-                else {
-                    msg.file = evt.target.result;
-                    msg.message = myFileName;
-                    msg.fullname = fullname;
-                    msg.SenderSocketId = MySocketId;
-                    msg.date = date;
-                    msg.ReceiverSocketId = toUserSocketId;
-                    msg.group = true;
-                    msg.SenderId = myUserId;
-                    msg.ReceiverUserId = toUserId;
-                    msg.type = 'FILE'
-                    socket.emit("message", msg);
-                    $("#hisTgroup").append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span style='font-size: 12px;position: relative;left: 65%'>" + date.format("h:mm:ss") + "</span><br>  <a target='_blank' href='images/"+myFileName+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+myFileName.substring(0,15)+"... </span></a></div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-                }
-            };
+            if (data.size < 5 * 1024 * 1024) {
+                reader.onload = function (evt) {
+                    var msg = {};
+                    date = new moment();
+                    if (isGroup == false) {
+                        msg.file = evt.target.result;
+                        msg.message = myFileName;
+                        msg.fullname = fullname;
+                        msg.SenderSocketId = MySocketId;
+                        msg.date = date;
+                        msg.ReceiverSocketId = toUserSocketId;
+                        msg.group = false;
+                        msg.SenderId = myUserId;
+                        msg.ReceiverUserId = toUserId;
+                        msg.type = 'FILE'
+                        socket.emit("message", msg);
+                        $("#hisT" + toUserId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span style='padding-left: 65px;font-size: 12px'>" + date.format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'>  <a href='files/" + myFileName + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + myFileName.substring(0, 15) + "... </span></a><span class='seenTick0 seenTick" + toUserId + "'> </span></div></li>");
+                        $('.chat').animate({scrollTop: 20000000}, "fast");
+                    } else {
+                        msg.file = evt.target.result;
+                        msg.message = myFileName;
+                        msg.fullname = fullname;
+                        msg.SenderSocketId = MySocketId;
+                        msg.date = date;
+                        msg.ReceiverSocketId = toUserSocketId;
+                        msg.group = true;
+                        msg.SenderId = myUserId;
+                        msg.ReceiverUserId = 0;
+                        msg.type = 'FILE'
+                        socket.emit("message", msg);
+                        $("#hisTgroup").append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span style='font-size: 12px;position: relative;left: 65%'>" + date.format("h:mm:ss") + "</span></div>  <a href='files/" + myFileName + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + myFileName.substring(0, 15) + "... </span></a></div></li>");
+                        $('.chat').animate({scrollTop: 20000000}, "fast");
+                    }
+                };
+            } else{
+                alert('Data size too large')
+            }
             reader.readAsDataURL(data);
-            $("#file").val('');
+            $("#fileAttach").val('');
         });
 
         $("#image").change(function (e) {
@@ -237,7 +445,7 @@ function auth() {
                     msg.ReceiverUserId = toUserId;
                     msg.type = 'IMAGE'
                     socket.emit("message", msg);
-                    $("#hisT" + toUserSocketId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+ date.format("h:mm:ss") + "</span> <br> <img class='chatImage' src=" + msg.file + " alt=" + msg.message + " /> </div></li>");
+                    $("#hisT" + toUserId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>"+ date.format("h:mm:ss") + "</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'> <img class='chatImage' src=" + msg.file + " alt=" + msg.message + " /> <span class='seenTick0 seenTick" + toUserId + "'> </span></div></li>");
                     $('.chat').animate({scrollTop: 20000000}, "fast");
                 }
                 else {
@@ -247,19 +455,18 @@ function auth() {
                     msg.SenderSocketId = MySocketId;
                     msg.date = date;
                     msg.ReceiverSocketId = toUserSocketId;
-                    msg.group = false;
+                    msg.group = true;
                     msg.SenderId = myUserId;
-                    msg.ReceiverUserId = toUserId;
+                    msg.ReceiverUserId = 0;
                     msg.type = 'IMAGE'
                     socket.emit("message", msg);
-                    $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+ date.format("h:mm:ss") + "</span><br> <img class='chatImage' src=" + msg.file + " alt=" + msg.message + " /> </div></li>");
+                    $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>"+ date.format("h:mm:ss") + "</span></div> <img class='chatImage' src=" + msg.file + " alt=" + msg.message + " /> </div></li>");
                     $('.chat').animate({scrollTop: 20000000}, "fast");
                 }
             };
             reader.readAsDataURL(data);
-            $("#file").val('');
+            $("#image").val('');
         });
-
 
         //User Typing
         inputs = $('#messageBox').on('keypress', (e) => {
@@ -269,112 +476,22 @@ function auth() {
                     {
                         fullname: fullname,
                         group: isGroup,
-                        SenderSocketId: MySocketId,
-                        ReceiverSocketId: toUserSocketId,
+                        SenderId : myUserId,
+                        ReceiverId : toUserId,
                     });
                 typingTimer = setTimeout(doneTyping, doneTypingInterval);
             }
         });
-
         //User Finished Typing
         function doneTyping () {
             socket.emit("finish-typing", {
                 fullname : fullname,
                 group : isGroup,
-                SenderSocketId: MySocketId,
-                ReceiverSocketId: toUserSocketId,
+                SenderId : myUserId,
+                ReceiverId : toUserId,
             });
         }
-
-
-        socket.on("disconnect", function (){
-            socket.emit("disconnect", myUserId);
-        });
-
-
-
-        let typingTimer;
-        let doneTypingInterval = 1000;
-
-        //Message Received
-        socket.on("message" , function(data) {
-            if(data.group == false) {
-                if (notifiSound) {
-                    var audio = new Audio('assets/sounds/notification_sound.mp3');
-                    audio.play();
-                }
-                if (data.SenderSocketId  != null && data.SenderSocketId  !== toUserSocketId) {
-                    document.getElementById('num' + data.SenderSocketId).style.display = 'block';
-                    $('#num' + data.SenderSocketId).html('NEW');
-                }
-                if(data.type == 'TEXT') {
-                    $('#hisT' + data.SenderSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br> " + data.message + " </div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-                } else if(data.type == 'IMAGE'){
-                    $("#hisT" + data.SenderSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br> <img class='chatImage' src=" + data.file + " alt=" + data.message + " /> </div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-
-                } else if(data.type == 'FILE'){
-                    $("#hisT" + data.SenderSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br>  <a target=\"_blank\" href='images/"+data.message+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+data.message.substring(0,15)+"... </span></a></div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-                } else {
-                    $("#hisT" + data.SenderSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br>  <audio class='voiceChat' src='./records/"+data.message+"' controls></audio> </div></li>");
-                    $('.chat').animate({scrollTop: 20000000}, "fast");
-                }
-            }else {
-                if (isGroup != true) {
-                    document.getElementById('numGroup').style.display = 'block';
-                    $('#numGroup').html('NEW');
-                    if(notifiSound) {
-                        var audio = new Audio('assets/sounds/notification_sound.mp3');
-                        audio.play();
-                    }
-
-                    if(data.type == 'TEXT') {
-                        $('#hisTgroup').append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br> " + data.message + " </div></li>");
-                        $('.chat').animate({scrollTop: 20000000}, "fast");
-                    } else if(data.type == 'IMAGE'){
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br> <img class='chatImage' src=" + data.file + " alt=" + data.message + " /> </div></li>");
-                        $('.chat').animate({scrollTop: 20000000}, "fast");
-
-                    } else if(data.type == 'FILE'){
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br>  <a target=\"_blank\" href='images/"+data.message+"' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> "+data.message.substring(0,15)+"... </span></a></div></li>");
-                        $('.chat').animate({scrollTop: 20000000}, "fast");
-                    } else {
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + data.fullname + "</b><span class='msgTime'>" + moment(data.date).format('h:mm:ss') + "</span><br><audio class='voiceChat' src='./records/"+data.message+"' controls></audio> </div></li>");
-                        $('.chat').animate({scrollTop: 20000000}, "fast");
-                    }
-                }
-
-            }
-        });
-
-        socket.on("typing" , function (data){
-            if(data.group == true) {
-                $('#typingGroup').html(data.fullname+' is Typing...');
-                $('#typingGroup').show();
-                $('#groupStatus').hide();
-            }
-            else {
-                $('#typing'+data.user).show();
-                $('#'+data.user+'Status').hide();
-
-            }
-        });
-
-        socket.on("finish-typing" , function (data){
-            if(data.group == true) {
-                $('#typingGroup').hide();
-                $('#groupStatus').show();
-            }
-            else {
-                $('#typing'+data.user).hide();
-                $('#'+data.user+'Status').show();
-
-            }
-        });
-
-
+        //On send voice record button press
         sendVoice.addEventListener("click", function () {
             if (!$("#audio-playback").hasClass("hidden")) {
                 $("#audio-playback").addClass("hidden")
@@ -397,35 +514,39 @@ function auth() {
             };
             var msg = {};
             myFileName = Date.now() + '-' + MySocketId + '.mp3';
-            var dateNow = new moment();
+            date = new moment();
             if(isGroup == false) {
-                msg.file = blob;
-                msg.message = myFileName;
-                msg.fullname = fullname;
-                msg.SenderSocketId = MySocketId;
-                msg.date = dateNow;
-                msg.ReceiverSocketId = toUserSocketId;
-                msg.group = false;
-                msg.SenderId = myUserId;
-                msg.ReceiverUserId = toUserId;
-                msg.type = 'VOICE'
-                socket.emit("message", msg);
-                $("#hisT"+toUserSocketId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+dateNow.format("h:mm:ss")+"</span> <br>  <audio class='voiceChat' src='"+voiceUrl+"' controls></audio> </div></li>");
+                socket.emit("message", {
+                    file : blob,
+                    message : myFileName,
+                    fullname : fullname,
+                    SenderSocketId : MySocketId,
+                    date : date,
+                    ReceiverSocketId : toUserSocketId,
+                    group : false,
+                    SenderId : myUserId,
+                    ReceiverUserId : toUserId,
+                    type : 'VOICE',
+                });
+                $("#hisT"+toUserId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'><div style='display: flex;justify-content: space-between;'> <b>You</b> <span class='msgTime'>"+date.format("h:mm:ss")+"</span> </div><div style='display: flex;align-items: flex-end;justify-content: space-between;'>  <audio class='voiceChat' src='"+voiceUrl+"' controls></audio><span class='seenTick0 seenTick" + toUserId + "'> </span></div></div></li>");
+
+                // $("#hisT"+toUserId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+date.format("h:mm:ss")+"</span><div style='display: flex;align-items: flex-end;justify-content: space-between;'>  <audio class='voiceChat' src='"+voiceUrl+"' controls></audio><span class='seenTick0 seenTick" + toUserId + "'> </span> </div></li>");
                 $('.chat').animate({scrollTop: 20000000}, "fast");
             }
             else {
-                msg.file = blob;
-                msg.message = myFileName;
-                msg.fullname = fullname;
-                msg.SenderSocketId = MySocketId;
-                msg.date = dateNow;
-                msg.ReceiverSocketId = toUserSocketId;
-                msg.group = false;
-                msg.SenderId = myUserId;
-                msg.ReceiverUserId = 0;
-                msg.type = 'VOICE'
-                socket.emit("message", msg);
-                $("#hisTgroup").append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+dateNow.format("h:mm:ss")+"</span> <br>  <audio class='voiceChat' src='"+voiceUrl+"' controls></audio> </div></li>");
+                socket.emit("message", {
+                    file : blob,
+                    message : myFileName,
+                    fullname : fullname,
+                    SenderSocketId : MySocketId,
+                    date : date,
+                    ReceiverSocketId : toUserSocketId,
+                    group : true,
+                    SenderId : myUserId,
+                    ReceiverUserId : 0,
+                    type : 'VOICE',
+                });
+                $("#hisTgroup").append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+date.format("h:mm:ss")+"</span> <br>  <audio class='voiceChat' src='"+voiceUrl+"' controls></audio> </div></li>");
                 $('.chat').animate({ scrollTop: 20000000 },  "fast");
             }
 
@@ -435,119 +556,99 @@ function auth() {
         });
 
         $(document).on('click','#usersList',function(){
+            document.getElementById('modalClose').click();
+            $('#deleteBtn').removeClass('hidden');
+
+            $('.search_value').val('');
+            $('.searchResults').html('');
             toUserSocketId = $(this).attr('socketId');
             isGroup = false;
             toUserId = $(this).attr('userId');
-            document.getElementById('num'+toUserSocketId).style.display = 'none';
-            openCity(event, $(this).attr('city'));
+            socket.emit("getUser",{ userId: toUserId, myId : myUserId});
+            socket.on("getUser", function (data){
+                $(".userData").html("");
+                $("#userProfileImage").attr("src",data.profile_image);
+                if(data.last_seen == 'Online')
+                    $(".userData").html(data.fullname + "<br><div style='margin-top: -5px;'><span id=\""+data.id+"Status\" style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Online </span> <span id=\"typing"+ data.id +"\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
+                else
+                    $(".userData").html(data.fullname + "<br><div style='margin-top: -5px;'><span id=\""+data.id+"Status\" style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Last Seen "+moment(data.last_seen).fromNow()+" </span> <span id=\"typing"+ data.id +"\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
+
+                $(".chat-history").html("");
+                $(".chat-history").html("<ul class=\"m-b-0 chatStyle\" id=\"hisT" + data.id + "\"></ul>");
+            });
+
+            document.getElementById('num'+toUserId).style.display = 'none';
             document.getElementById("messageBox").value = "";
             toUserName = $(this).attr('userName');
-            $('.sendForm').show();
             socket.emit("getChat", {
                 userId : myUserId.toString(),
                 toUserId : toUserId.toString(),
-                socket : MySocketId,
             });
+
+            socket.emit("seenMsgs", {
+                userId : myUserId.toString(),
+                toUserId : toUserId.toString(),
+            });
+            $('.sendForm').show();
+
         });
-
-
         $(document).on('click','#groupList',function(){
             isGroup = true;
-            toUserId = $(this).attr('userId');
+            toUserId = 0;
+            $('#deleteBtn').addClass('hidden');
+
             document.getElementById('numGroup').style.display = 'none';
-            openCity(event, $(this).attr('city'));
             document.getElementById("messageBox").value = "";
+
+            $("#userProfileImage").attr("src","assets/images/metagolslogo.svg");
+            $(".userData").html("");
+            $(".userData").html("MetaGols Group<br><div style='margin-top: -5px;'><span id='groupStatus' style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Active </span> <span id=\"typingGroup\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
+            $(".chat-history").html("");
+            $(".chat-history").html("<ul class=\"m-b-0 chatStyle\" id=\"hisTgroup\"></ul>");
             $('.sendForm').show();
             toUserSocketId = null;
             socket.emit("getGroupChat", {
+                userId : myUserId,
                 toUserId : toUserId,
-                socket : MySocketId,
             });
         });
 
+        $('#deleteChat').click(function (e){
+            socket.emit('deleteChat',{
+                myUserId : myUserId,
+                toUserId : toUserId
+            })
 
-        socket.on("getChat", function (data) {
+            $('#groupList').click();
+        })
+        $('input[name="search_value"]').on('input', function(){
+            // setTimeout to simulate ajax
+            setTimeout(function() {
+                var search = $('input[name="search_value"]').val().toLowerCase();
+                var output = '';
 
-            $("#hisT" + toUserSocketId).html('');
-            data.map(el => {
-                if (el.from_user == myUserId) {
-                    if (el.type == 'TEXT') {
-                        $("#hisT" + toUserSocketId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> " + el.msg + " </div></li>"
-                        )
-                    } else if (el.type == 'IMAGE') {
-                        $("#hisT" + toUserSocketId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>"
-                        )
-                    } else if (el.type == 'FILE') {
-                        $("#hisT" + toUserSocketId).append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> <a target=\"_blank\" href='images/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>")
-                    }
-                    else {
-                        $("#hisT"+toUserSocketId).append("<li class='clearfix'><div STYLE=\"text-align: right\" class=\"message-data text-right\"></div><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>"+moment(el.createdAt).format("h:mm:ss")+"</span> <br>  <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>");
-                    }
-                } else {
-                    if (el.type == 'TEXT') {
-                        $('#hisT' + toUserSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><b>" + toUserName + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> " + el.msg + " </div></li>")
-                    } else if (el.type == 'IMAGE') {
-                        $("#hisT" + toUserSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + toUserName + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>");
-                    } else if (el.type == 'FILE') {
-                        $("#hisT" + toUserSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + toUserName + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br><a target=\"_blank\" href='images/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>");
-                    }
-                    else {
-                        $('#hisT' + toUserSocketId).append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><b>" + toUserName + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>")
+                for (var i = 0; i < users.length; i++) {
+                    if (search.trim() !== '' && search.length > 2 && (users[i].fullname).toLowerCase().includes(search)) {
+                        if (users[i].id != myUserId) {
+                            if (users[i].last_seen == 'Online')
+                                output += '<li id="usersList" userName="' + users[i].fullname + '" socketId="' + users[i].socket_id + '" userId="' + users[i].id + '" class="list-group-item user-item text-left"><img class="img-circle img-user img-thumbnail " src="./' + users[i].profile_image + '"><div class="searchName"> ' + users[i].fullname + ' <br><span style="font-size: 12px"> Online </span></div></li>';
+                            else
+                                output += '<li id="usersList" userName="' + users[i].fullname + '" socketId="' + users[i].socket_id + '" userId="' + users[i].id + '" class="list-group-item user-item text-left"><img class="img-circle img-user img-thumbnail " src="./' + users[i].profile_image + '"><div class="searchName"> ' + users[i].fullname + ' <br><span style="font-size: 12px"> Last Seen ' + moment(users[i].last_seen).fromNow() + ' </span></div></li>';
+                        }
                     }
                 }
-            })
-            $('.chat').animate({scrollTop: 20000000}, "fast");
-        })
 
-        socket.on("getGroupChat", function (data) {
-            $("#hisTgroup").html('');
-            data.map(el => {
-                if (el.from_user == myUserId) {
-                    if (el.type == 'TEXT') {
-                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> " + el.msg + " </div></li>"
-                        )
-                    } else if (el.type == 'IMAGE') {
-                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>"
-                        )
-                    } else if (el.type == 'FILE') {
-                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> <a target=\"_blank\" href='images/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>")
-                    }
-                    else{
-                        $("#hisTgroup").append("<li class='clearfix'><div style='text-align: left;' class='message other-message float-right'> <b>You</b> <span class='msgTime'>" + moment(el.createdAt).format("h:mm:ss") + "</span> <br> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>")
+                $('.searchResults').html(output);
+            });
+        });
 
-                    }
-                } else {
-                    if (el.type == 'TEXT') {
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div class='message my-message'><b>" + el.fullname + " </b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> " + el.msg + " </div></li>")
-                    } else if (el.type == 'IMAGE') {
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> <img class='chatImage' src='images/" + el.msg + "' /> </div></li>");
-                    } else if (el.type == 'FILE') {
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br><a target=\"_blank\" href='images/" + el.msg + "' style=\"border-radius: 0;font-size: 1.17rem;display: revert;cursor: pointer;width: 100%;color: black;text-decoration: none\" id=\"downloadFile\" download><i class=\"fa fa-download\"></i> <span style='font-size: 15px'> " + el.msg.substring(0, 15) + "... </span></a></div></li>");
-                    }
-                    else {
-                        $("#hisTgroup").append("<li class='clearfix'><div class=\"message-data \"></div><div style='right: 0' class='message my-message'><b>" + el.fullname + "</b><span class='msgTime'>" + moment(el.createdAt).format('h:mm:ss') + "</span><br> <audio class='voiceChat' src='./records/"+el.msg+"' controls></audio> </div></li>");
+        $(document).on('click','#logout',function(){
+            document.cookie = 'token=; Max-Age=-99999999;';
+            window.location.href = "login.html";
+        });
 
-                    }
-                }
-            })
-            $('.chat').animate({scrollTop: 20000000}, "fast");
 
-        })
     }
 }
 
-
-function openCity(evt, cityName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tabcontent");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tablinks");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(cityName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
 

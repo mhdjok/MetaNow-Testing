@@ -18,8 +18,11 @@ const Chats = db.define('chat', {
     msg: {
         type: DataTypes.STRING
     },
-    type: {
+    seen: {
         type: DataTypes.STRING
+    },
+    type: {
+        type: DataTypes.INTEGER
     },
     fullname: {
         type: DataTypes.STRING

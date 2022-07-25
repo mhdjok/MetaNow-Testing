@@ -1,0 +1,195 @@
+<html>
+<head>
+    <title> Register </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+
+</head>
+<style>
+    body{
+        background-color: #1c0a35;
+        margin-top:20px;
+        /*background-repeat: no-repeat;*/
+        /*background-attachment: fixed;*/
+        background-position: center;
+    }
+
+    #loading {
+        position: fixed;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0.8;
+        z-index: 99;
+        background: url('https://i.gifer.com/origin/6a/6a2dfb96f278692f0900cc08975efe0e_w200.gif') no-repeat rgb(249, 249, 249);
+        background-attachment: fixed;
+        background-position: center;
+        background-size: 200px 180px;
+
+    }
+
+</style>
+<body>
+<div id="loading">
+    <div id="loading-image"></div>
+</div>
+
+<section class="vh-100 bg-image">
+    <div class="mask d-flex align-items-center h-100 gradient-custom-3">
+        <div class="container h-100">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-12 col-md-9 col-lg-7 col-xl-6">
+                    <div class="alert alert-danger alert-d" role="alert">
+                      Email Already Exist
+                    </div>
+                    <div class="card" style="border-radius: 15px;">
+                        <div class="card-body p-5">
+                            <h2 class="text-uppercase text-center mb-5">Create an account</h2>
+
+                            <form id="login-form" method="post">
+
+                                <div class="form-outline mb-4">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" id="fullName" class="form-control form-control-lg" required/>
+                                </div>
+
+                                <div class="form-outline mb-4">
+                                    <label class="form-label" >Email</label>
+                                    <input type="email" id="email" class="form-control form-control-lg" required/>
+                                </div>
+
+                                <div class="form-outline mb-4">
+                                    <label class="form-label" >Password</label>
+                                    <input type="password" id="password" class="form-control form-control-lg" required/>
+                                </div>
+
+
+                                <div class="d-flex justify-content-center">
+                                    <button style="color: white" type="submit" class="btn btn-md btn-success">Register</button>
+                                </div>
+
+                                <p class="text-center text-muted mt-5 mb-0">Have already an account? <a href="login.html" class="fw-bold text-body"><u>Login here</u></a></p>
+
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script>
+
+
+    fullname = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('fullname='))
+        ?.split('=')[1];
+
+    email = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('email='))
+        ?.split('=')[1];
+
+
+
+    function showLoader(){
+        $('#loading').fadeIn('slow');
+    }
+    function hideLoader(){
+        $('#loading').fadeOut('slow');
+    }
+
+    $(document).ready(function () {
+        hideLoader();
+        $('.alert-d').hide();
+    });
+</script>
+<script>
+    var url = "http://192.168.10.121:3000";
+    $(document).ready(function () {
+        var token = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('token='))
+            ?.split('=')[1];
+        if(token == null) {
+            $("#login-form").submit(function (event) {
+                showLoader()
+                $('.alert-d').hide();
+                $.ajax({
+                    type: "POST",
+                    url: url + "/register",
+                    data: JSON.stringify({
+                        email: $("#email").val(),
+                        password: $("#password").val(),
+                        fullName: $("#fullName").val(),
+                    }),
+                    dataType: 'json',
+                    processData: false,
+                    contentType: 'application/json',
+                    success: function (data, status, msg) {
+                        window.location.href = 'login.html';
+                    },
+                    error: function (data, jqXhr, textStatus, errorThrown) {
+                        hideLoader()
+                        $('.alert-d').show();
+
+                    }
+                });
+
+                event.preventDefault();
+            });
+        }
+        else {
+            $.ajax({
+                type: "POST",
+                url: url + "/refreshToken",
+                data: JSON.stringify({
+                    token: token,
+                }),
+                dataType: 'json',
+                processData: false,
+                contentType: 'application/json',
+                success: function (data, status, msg) {
+                    window.location.href = 'index.html';
+                },
+                error: function (data, jqXhr, textStatus, errorThrown) {
+                    $("#login-form").submit(function (event) {
+                        showLoader()
+                        $('.alert-d').hide();
+                        $.ajax({
+                            type: "POST",
+                            url: url + "/register",
+                            data: JSON.stringify({
+                                email: $("#email").val(),
+                                password: $("#password").val(),
+                                fullName: $("#fullName").val(),
+                            }),
+                            dataType: 'json',
+                            processData: false,
+                            contentType: 'application/json',
+                            success: function (data, status, msg) {
+                                window.location.href = 'login.html';
+                            },
+                            error: function (data, jqXhr, textStatus, errorThrown) {
+                                hideLoader()
+                                $('.alert-d').show();
+
+                            }
+                        });
+
+                        event.preventDefault();
+                    });
+                }
+            });
+        }
+    });
+
+</script>
+</body>
+</html>
