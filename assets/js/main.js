@@ -127,14 +127,14 @@ function auth() {
                     if (el.secondUser.last_seen == 'Online') {
                         $('#users').append("" + "<li id='usersList' userName='" + el.secondUser.fullname + "' socketId='" + el.secondUser.socket_id + "' userId='" + el.secondUser.id + "' class='clearfix tablinks' ><img src='"+el.secondUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.secondUser.fullname + " </div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div style='display: none' id='num" + el.secondUser.id + "' class='msgs'></div></div></li>")
                     } else {
-                        $('#users').append("" + "<li id='usersList' city='" + el.secondUser.socket_id + "' userName='" + el.secondUser.fullname + "' socketId='" + el.secondUser.socket_id + "' userId='" + el.secondUser.id + "' class='clearfix tablinks' ><img src='"+el.secondUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.secondUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last Seen "+ moment(el.secondUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.secondUser.id + "' class='msgs'></div></div></li>")
+                        $('#users').append("" + "<li id='usersList' city='" + el.secondUser.socket_id + "' userName='" + el.secondUser.fullname + "' socketId='" + el.secondUser.socket_id + "' userId='" + el.secondUser.id + "' class='clearfix tablinks' ><img src='"+el.secondUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.secondUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last seen "+ moment(el.secondUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.secondUser.id + "' class='msgs'></div></div></li>")
                     }
                 }
                 else {
                     if (el.firstUser.last_seen == 'Online') {
                         $('#users').append("" + "<li id='usersList' userName='" + el.firstUser.fullname + "' socketId='" + el.firstUser.socket_id + "' userId='" + el.firstUser.id + "' class='clearfix tablinks' ><img src='"+el.firstUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.firstUser.fullname + " </div><div class='status'> <i class='fa fa-circle online'></i> Active </div><div style='display: none' id='num" + el.firstUser.id + "' class='msgs'></div></div></li>")
                     } else {
-                        $('#users').append("" + "<li id='usersList' city='" + el.firstUser.socket_id + "' userName='" + el.firstUser.fullname + "' socketId='" + el.firstUser.socket_id + "' userId='" + el.firstUser.id + "' class='clearfix tablinks' ><img src='"+el.firstUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.firstUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last Seen "+ moment(el.firstUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.firstUser.id + "' class='msgs'></div></div></li>")
+                        $('#users').append("" + "<li id='usersList' city='" + el.firstUser.socket_id + "' userName='" + el.firstUser.fullname + "' socketId='" + el.firstUser.socket_id + "' userId='" + el.firstUser.id + "' class='clearfix tablinks' ><img src='"+el.firstUser.profile_image+"' alt='avatar'><div class='about'><div class='name'>" + el.firstUser.fullname + " </div><div class='status'> <i class='fa fa-circle offline'></i> Last seen "+ moment(el.firstUser.last_seen).fromNow() +" </div><div style='display: none' id='num" + el.firstUser.id + "' class='msgs'></div></div></li>")
                     }
                 }
 
@@ -571,7 +571,7 @@ function auth() {
                 if(data.last_seen == 'Online')
                     $(".userData").html(data.fullname + "<br><div style='margin-top: -5px;'><span id=\""+data.id+"Status\" style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Online </span> <span id=\"typing"+ data.id +"\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
                 else
-                    $(".userData").html(data.fullname + "<br><div style='margin-top: -5px;'><span id=\""+data.id+"Status\" style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Last Seen "+moment(data.last_seen).fromNow()+" </span> <span id=\"typing"+ data.id +"\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
+                    $(".userData").html(data.fullname + "<br><div style='margin-top: -5px;'><span id=\""+data.id+"Status\" style=\"font-weight:400;font-size: 12px;margin-top: -5px\"> Last seen "+moment(data.last_seen).fromNow()+" </span> <span id=\"typing"+ data.id +"\" style=\"font-weight:400;font-size: 12px;display: none\"> Typing... </span></div>");
 
                 $(".chat-history").html("");
                 $(".chat-history").html("<ul class=\"m-b-0 chatStyle\" id=\"hisT" + data.id + "\"></ul>");
@@ -633,7 +633,7 @@ function auth() {
                             if (users[i].last_seen == 'Online')
                                 output += '<li id="usersList" userName="' + users[i].fullname + '" socketId="' + users[i].socket_id + '" userId="' + users[i].id + '" class="list-group-item user-item text-left"><img class="img-circle img-user img-thumbnail " src="./' + users[i].profile_image + '"><div class="searchName"> ' + users[i].fullname + ' <br><span style="font-size: 12px"> Online </span></div></li>';
                             else
-                                output += '<li id="usersList" userName="' + users[i].fullname + '" socketId="' + users[i].socket_id + '" userId="' + users[i].id + '" class="list-group-item user-item text-left"><img class="img-circle img-user img-thumbnail " src="./' + users[i].profile_image + '"><div class="searchName"> ' + users[i].fullname + ' <br><span style="font-size: 12px"> Last Seen ' + moment(users[i].last_seen).fromNow() + ' </span></div></li>';
+                                output += '<li id="usersList" userName="' + users[i].fullname + '" socketId="' + users[i].socket_id + '" userId="' + users[i].id + '" class="list-group-item user-item text-left"><img class="img-circle img-user img-thumbnail " src="./' + users[i].profile_image + '"><div class="searchName"> ' + users[i].fullname + ' <br><span style="font-size: 12px"> Last seen ' + moment(users[i].last_seen).fromNow() + ' </span></div></li>';
                         }
                     }
                 }
