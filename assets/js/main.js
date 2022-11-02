@@ -17,7 +17,7 @@ var notifiSound = true;
 var toUserName;
 let typingTimer;
 let doneTypingInterval = 1000;
-var url = "http://192.168.10.121:3000";
+var url = "http://192.168.12.64:3000";
 
 if(notifiSound){
     $('#soundOption').html('<button id="soundOff" class="btn btn-danger" style="font-size: 12px">Turn Off Notification</button>');
@@ -79,14 +79,14 @@ function auth() {
 
 
 
-        const socket = io("ws://192.168.10.121:3000");
+        const socket = io("ws://192.168.12.64:3000");
         socket.on("connect", () => {
-            socket.emit("user", {id : socket.id, fullname : fullname, email : email, token : token});
+            socket.emit("user", {id : socket.id, fullname : fullname, email : email, token : token, test : 'testing'});
             MySocketId = socket.id;
             $("#status").text('Connected');
             socket.on('checkToken', function (data){
-                if(!data)
-                    window.location.href = 'login.html';
+                // if(!data)
+                //     window.location.href = 'login.html';
 
             })
                 socket.emit("getGroupChat", {
